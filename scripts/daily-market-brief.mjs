@@ -88,7 +88,13 @@ async function main() {
 
   await writeFile("summary-payload.json", JSON.stringify(payload, null, 2), "utf8");
 
-  const summary = await generateSummary(payload);
+  let summary;
+  try {
+    summary = await generateSummary(payload);
+  } catch (error) {
+    console.warn(`OpenAI summary failed, using fallback: ${String(error.message || error)}`);
+    summary = buildFallbackSummary(payload, error);
+  }
   await writeFile("summary-output.txt", summary, "utf8");
 
   const chunks = splitForTelegram(summary, MAX_TELEGRAM_CHARS);
@@ -233,6 +239,44 @@ async function generateSummary(payload) {
   return outputText.trim();
 }
 
+function buildFallbackSummary(payload, cause) {
+  const lines = [];
+  lines.push(`Resumo matinal | ${payload.date_label}`);
+  lines.push("");
+  lines.push("Acao imediata");
+  lines.push(
+    `- A sintese OpenAI falhou nesta execucao (${String(cause.message || cause)}). O resumo abaixo foi gerado em modo de contingencia.`,
+  );
+  lines.push("- Validar principais temas de macro, geopolítica e cripto antes de decisões de risco maiores.");
+  lines.push("");
+  lines.push("Criptomoedas");
+  lines.push("Ativo | Preco USD | 24h % | Direcao");
+  lines.push("---|---:|---:|---");
+
+  for (const item of payload.prices) {
+    const price =
+      typeof item.price_usd === "number" ? formatPrice(item.price_usd) : "n/d";
+    const change =
+      typeof item.change_24h_pct === "number" ? `${item.change_24h_pct.toFixed(2)}%` : "n/d";
+    lines.push(`${item.symbol} | ${price} | ${change} | ${item.direction}`);
+  }
+
+  lines.push("");
+  lines.push("Mercados e macro");
+  lines.push(...formatNewsSection(payload.sections.markets_macro));
+  lines.push("");
+  lines.push("Geopolitica");
+  lines.push(...formatNewsSection(payload.sections.geopolitics));
+  lines.push("");
+  lines.push("Trump / Truth Social");
+  lines.push(...formatNewsSection(payload.sections.trump));
+  lines.push("");
+  lines.push("Cripto e regulacao");
+  lines.push(...formatNewsSection(payload.sections.crypto));
+
+  return lines.join("\n").trim();
+}
+
 function extractOutputText(json) {
   if (typeof json.output_text === "string" && json.output_text.trim()) {
     return json.output_text;
@@ -321,6 +365,33 @@ function splitForTelegram(text, limit) {
   return chunks.map((chunk, index) =>
     chunks.length === 1 ? chunk : `[Parte ${index + 1}/${chunks.length}]\n${chunk}`,
   );
+}
+
+function formatPrice(value) {
+  if (value >= 1000) {
+    return value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  if (value >= 1) {
+    return value.toFixed(2);
+  }
+
+  return value.toFixed(4);
+}
+
+function formatNewsSection(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return ["- Sem itens disponiveis nesta execucao."];
+  }
+
+  return items.slice(0, 4).map((item) => {
+    const source = item.source ? ` [${item.source}]` : "";
+    const link = item.link ? ` ${item.link}` : "";
+    return `- ${item.title}${source}${link}`;
+  });
 }
 
 async function fetchText(url) {
