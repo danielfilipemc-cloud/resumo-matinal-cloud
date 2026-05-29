@@ -12,6 +12,7 @@ jobs:
     env:
       TZ: Europe/Lisbon
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      USE_OPENAI: "false"
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

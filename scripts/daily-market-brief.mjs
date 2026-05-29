@@ -2,17 +2,14 @@ import { writeFile } from "node:fs/promises";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.4-mini";
+const USE_OPENAI = process.env.USE_OPENAI !== "false";
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TIMEZONE = "Europe/Lisbon";
 const MAX_TELEGRAM_CHARS = 3500;
 const GOOGLE_NEWS_LOCALE = "hl=pt-PT&gl=PT&ceid=PT:pt-150";
 
-const REQUIRED_ENV = [
-  "OPENAI_API_KEY",
-  "TELEGRAM_BOT_TOKEN",
-  "TELEGRAM_CHAT_ID",
-];
+const REQUIRED_ENV = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"];
 
 for (const name of REQUIRED_ENV) {
   if (!process.env[name]) {
@@ -89,13 +86,7 @@ async function main() {
 
   await writeFile("summary-payload.json", JSON.stringify(payload, null, 2), "utf8");
 
-  let summary;
-  try {
-    summary = await generateSummary(payload);
-  } catch (error) {
-    console.warn(`OpenAI summary failed, using fallback: ${String(error.message || error)}`);
-    summary = buildFallbackSummary(payload, error);
-  }
+  const summary = await buildSummary(payload);
   await writeFile("summary-output.txt", summary, "utf8");
 
   const chunks = splitForTelegram(summary, MAX_TELEGRAM_CHARS);
@@ -240,6 +231,23 @@ async function generateSummary(payload) {
   }
 
   return outputText.trim();
+}
+
+async function buildSummary(payload) {
+  if (!USE_OPENAI) {
+    return buildFallbackSummary(payload, new Error("OpenAI disabled by configuration"));
+  }
+
+  if (!OPENAI_API_KEY) {
+    return buildFallbackSummary(payload, new Error("OpenAI API key missing"));
+  }
+
+  try {
+    return await generateSummary(payload);
+  } catch (error) {
+    console.warn(`OpenAI summary failed, using fallback: ${String(error.message || error)}`);
+    return buildFallbackSummary(payload, error);
+  }
 }
 
 function buildFallbackSummary(payload, cause) {
