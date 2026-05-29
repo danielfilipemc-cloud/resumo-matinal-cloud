@@ -6,6 +6,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TIMEZONE = "Europe/Lisbon";
 const MAX_TELEGRAM_CHARS = 3500;
+const GOOGLE_NEWS_LOCALE = "hl=pt-PT&gl=PT&ceid=PT:pt-150";
 
 const REQUIRED_ENV = [
   "OPENAI_API_KEY",
@@ -34,32 +35,32 @@ const feeds = [
     key: "markets_macro",
     title: "Mercados e macro",
     urls: [
-      "https://news.google.com/rss/search?q=macroeconomics+markets+central+banks+inflation+rates+energy+commodities&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=Reuters+markets+Fed+ECB+inflation+tariffs+oil&hl=en-US&gl=US&ceid=US:en",
+      `https://news.google.com/rss/search?q=macroeconomia+mercados+bancos+centrais+inflacao+juros+energia+commodities&${GOOGLE_NEWS_LOCALE}`,
+      `https://news.google.com/rss/search?q=Reuters+mercados+Fed+BCE+inflacao+tarifas+petroleo&${GOOGLE_NEWS_LOCALE}`,
     ],
   },
   {
     key: "geopolitics",
     title: "Geopolitica",
     urls: [
-      "https://news.google.com/rss/search?q=Reuters+geopolitics+war+sanctions+shipping+oil+gas+supply+chain&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=Red+Sea+Black+Sea+Hormuz+shipping+oil+Reuters&hl=en-US&gl=US&ceid=US:en",
+      `https://news.google.com/rss/search?q=Reuters+geopolitica+guerra+sancoes+shipping+petroleo+gas+cadeia+abastecimento&${GOOGLE_NEWS_LOCALE}`,
+      `https://news.google.com/rss/search?q=Mar+Vermelho+Mar+Negro+Ormuz+shipping+petroleo+Reuters&${GOOGLE_NEWS_LOCALE}`,
     ],
   },
   {
     key: "trump",
     title: "Trump / Truth Social",
     urls: [
-      "https://news.google.com/rss/search?q=Donald+Trump+Truth+Social+markets+tariffs+Reuters&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=Donald+Trump+policy+markets+Reuters&hl=en-US&gl=US&ceid=US:en",
+      `https://news.google.com/rss/search?q=Donald+Trump+Truth+Social+mercados+tarifas+Reuters&${GOOGLE_NEWS_LOCALE}`,
+      `https://news.google.com/rss/search?q=Donald+Trump+politica+mercados+Reuters&${GOOGLE_NEWS_LOCALE}`,
     ],
   },
   {
     key: "crypto",
     title: "Cripto e regulacao",
     urls: [
-      "https://news.google.com/rss/search?q=bitcoin+ethereum+solana+crypto+regulation+SEC+ETF+Reuters&hl=en-US&gl=US&ceid=US:en",
-      "https://news.google.com/rss/search?q=cryptocurrency+regulation+markets+Reuters&hl=en-US&gl=US&ceid=US:en",
+      `https://news.google.com/rss/search?q=bitcoin+ethereum+solana+regulacao+cripto+SEC+ETF+Reuters&${GOOGLE_NEWS_LOCALE}`,
+      `https://news.google.com/rss/search?q=regulacao+criptomoedas+mercados+Reuters&${GOOGLE_NEWS_LOCALE}`,
     ],
   },
 ];
@@ -197,6 +198,8 @@ async function generateSummary(payload) {
     "Assinala incertezas e falta de confirmacao quando aplicavel.",
     "Nao inventes agenda nem emails.",
     "A seccao Criptomoedas deve incluir uma tabela compacta em texto simples.",
+    "Nao incluas links no texto final.",
+    "Usa portugues europeu natural e conciso.",
   ].join(" ");
 
   const user = [
@@ -247,7 +250,7 @@ function buildFallbackSummary(payload, cause) {
   lines.push(
     `- A sintese OpenAI falhou nesta execucao (${String(cause.message || cause)}). O resumo abaixo foi gerado em modo de contingencia.`,
   );
-  lines.push("- Validar principais temas de macro, geopolítica e cripto antes de decisões de risco maiores.");
+  lines.push("- Validar principais temas de macro, geopolitica e cripto antes de decisoes de risco maiores.");
   lines.push("");
   lines.push("Criptomoedas");
   lines.push("Ativo | Preco USD | 24h % | Direcao");
@@ -389,8 +392,7 @@ function formatNewsSection(items) {
 
   return items.slice(0, 4).map((item) => {
     const source = item.source ? ` [${item.source}]` : "";
-    const link = item.link ? ` ${item.link}` : "";
-    return `- ${item.title}${source}${link}`;
+    return `- ${item.title}${source}`;
   });
 }
 
